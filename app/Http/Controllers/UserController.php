@@ -1,40 +1,88 @@
 <?php
 
 namespace App\Http\Controllers;
-use App\User;
+
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Session;
+use App\Http\Requests\RegisterRequest;
+use App\Http\Requests\LoginRequest;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+use App\Interfaces\AuthenticateRepositoryInterface;
+
 class UserController extends Controller
 {
-    public function register(Request $request){
-$this->validate($request,[
-    'email'=>'required|email|unique:users'
-
-]);
-        $table=new User();
-      $table->fname=  $request->input('fname');
-      $table->lname=   $request->input('lname');
-      $table->email=  $request->input('email');
-      $table->password= bcrypt( $request->input('password'));
-      $table->save();
-      return redirect()->back();
+    private AuthenticateRepositoryInterface $authenticateRepositoryInterface;
+    
+    /**
+     * __construct
+     *
+     * @param  mixed $authenticateRepositoryInterface
+     * @return void
+     */
+    public function __construct(AuthenticateRepositoryInterface $authenticateRepositoryInterface){
+       $this->authenticateRepositoryInterface = $authenticateRepositoryInterface;
     }
-
-    public function login(Request $request){
-        $data=$request->only('email','password');
-      if(Auth::attempt($data)){
-         return redirect()->route('home');//homepage
-      }
-      return redirect()->back();
+    
+    /**
+     * register
+     *
+     * @param  mixed $request
+     * @return void
+     */
+    public function register(RegisterRequest $request){
+        try{
+            DB::beginTransaction();
+            $userDetails = [
+                'first_name' => $request->input('first_name'),
+                'last_name' => $request->input('last_name'),
+                'email' => $request->input('email'),
+                'password' => bcrypt( $request->input('password'))
+            ];
+            $register = $this->authenticateRepositoryInterface->register($userDetails);
+            DB::commit();
+            return redirect()->back();
+        }catch(\Exception $exception){
+            DB::rollback();
+            Log::error($exception);
+            return redirect()->back();
+        }
     }
-
-    public function home(){
-        return view('home');
+    
+    /**
+     * login
+     *
+     * @param  mixed $request
+     * @return void
+     */
+    public function login(LoginRequest $request){
+        try{
+            $userDetails = [
+                'email' => $request->input('email'),
+                'password' => $request->input('password')
+            ];
+            $login = $this->authenticateRepositoryInterface->login($userDetails);
+            if($login){
+                return view('home');
+            }
+            return redirect()->back();
+        }catch(\Exception $exception){
+            Log::error($exception);
+            return redirect()->back();
+        }
     }
+    
+    /**
+     * logout
+     *
+     * @return void
+     */
     public function logout(){
-        Auth::logout();
-        Session::flush();
-        return redirect('/');
+        try{
+            $this->authenticateRepositoryInterface->logout();
+            return redirect('/');
+        }catch(\Exception $exception){
+            Log::error($exception);
+            return redirect()->back();
+        }
     }
 }
