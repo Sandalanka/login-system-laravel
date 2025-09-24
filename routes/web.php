@@ -1,5 +1,5 @@
 <?php
-
+use App\Http\Controllers\UserController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -14,21 +14,7 @@
 Route::get('/', function () {
     return view('welcome');
 });
-Route::post('register',[
-    'uses'=>'UserController@register',
-    'as'=>'singup'
-]);
 
-Route::post('login',[
-    'uses'=>'UserController@login',
-    'as'=>'signin'
-]);
-
-Route::get('home',[
-    'uses'=>'UserController@home',
-    'as'=>'home'
-])->middleware('auth');
-Route::get('signout',[
-    'uses'=>'UserController@logout',
-    'as'=>'signout'
-]);
+Route::post('register',[UserController::class,'register'])->name('singup');
+Route::post('login',[UserController::class,'login'])->name('signin');
+Route::get('signout',[UserController::class,'logout'])->name('signout')->middleware('auth');
